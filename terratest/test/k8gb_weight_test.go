@@ -38,4 +38,6 @@ func TestWeight5050(t *testing.T) {
 
 	require.Equal(t, "roundRobin", epeu.Labels["strategy"])
 	require.Equal(t, "roundRobin", epus.Labels["strategy"])
+	require.True(t, len(epus.Labels) > 1, "EU endpoint", ingressHost, " doesn't contain weight labels")
+	require.True(t, len(epeu.Labels) > 1, "EU endpoint", ingressHost, " doesn't contain weight labels")
 }
