@@ -358,6 +358,30 @@ func (i *Instance) GetLocalTargets() []string {
 	return dig
 }
 
+func (i *Instance) GetExternalDNSEndpoint()  (ep DNSEndpoint) {
+	const endpointName = "test-gslb"
+	ep = DNSEndpoint{}
+	j, err := k8s.RunKubectlAndGetOutputE(i.w.t, i.w.k8sOptions, "get", "dnsendpoints.externaldns.k8s.io", endpointName,"-ojson")
+	require.NoError(i.w.t, err)
+	err = json.Unmarshal([]byte(j),&ep)
+	if err != nil {
+		return ep
+	}
+	return ep
+
+	//
+	//	names, err := k8s.RunKubectlAndGetOutputE(i.w.t, i.w.k8sOptions, "get", "dnsendpoints.externaldns.k8s.io", "test-gslb", "--no-headers",
+	//	"-o", "custom-columns=ENDPOINTS:'.spec.endpoints[*].dnsName'")
+	//require.NoError(i.w.t, err)
+	//for index, n := range strings.Split(names,",") {
+	//	ep.
+	//	labels, err := k8s.RunKubectlAndGetOutputE(i.w.t, i.w.k8sOptions, "get", "dnsendpoints.externaldns.k8s.io", "test-gslb", "--no-headers",
+	//		"-o", fmt.Sprintf("custom-columns=LABELS:'.spec.endpoints[%v].labels'",index))
+	//	require.NoError(i.w.t, err)
+	//
+	//	m := make()
+	}
+
 // HitTestApp makes HTTP GET to TestApp when installed otherwise panics.
 // If the function successfully hits the TestApp, it returns the TestAppResult.
 func (i *Instance) HitTestApp() (result *TestAppResult) {
