@@ -134,6 +134,7 @@ func (r *GslbReconciler) gslbDNSEndpoint(gslb *k8gbv1beta1.Gslb) (*externaldns.D
 					"strategy": gslb.Spec.Strategy.Type,
 				},
 			}
+			log.Info().Msgf("XXX: ExternalTargets: %v", externalTargetsAndRegions)
 			for k, v := range r.getLabels(gslb, externalTargetsAndRegions) {
 				dnsRecord.Labels[k] = v
 			}
@@ -175,6 +176,7 @@ func (r *GslbReconciler) updateRuntimeStatus(gslb *k8gbv1beta1.Gslb, isPrimary b
 // getLabels map of where key identifies region and weight, value identifies IP.
 func (r *GslbReconciler) getLabels(gslb *k8gbv1beta1.Gslb, targets assistant.Targets) (labels map[string]string) {
 	labels = make(map[string]string, 0)
+	log.Info().Msgf("XXX: targets: %v %v", targets, gslb.Spec.Strategy.Weight)
 	for k, v := range gslb.Spec.Strategy.Weight {
 		t, found := targets[k]
 		if !found {
@@ -185,5 +187,6 @@ func (r *GslbReconciler) getLabels(gslb *k8gbv1beta1.Gslb, targets assistant.Tar
 			labels[l] = ip
 		}
 	}
+	log.Info().Msgf("XXX: labels: %v", labels)
 	return labels
 }
