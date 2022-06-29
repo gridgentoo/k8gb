@@ -7,7 +7,7 @@ import (
 	"k8gbterratest/utils"
 )
 
-func TestWeight5050(t *testing.T) {
+func TestWeightsExistsInLocalDNSEndpoint(t *testing.T) {
 	t.Parallel()
 	const ingressHost = "terratest-roundrobin.cloud.example.com"
 	const host = "weight-roundrobin.cloud.example.com"
