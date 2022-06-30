@@ -38,12 +38,12 @@ func TestWeightsExistsInLocalDNSEndpoint(t *testing.T) {
 	require.NoError(t, err)
 	defer instanceEU.Kill()
 
-	instanceUS, err := utils.NewWorkflow(t, "k3d-test-gslb1", 5053).
+	instanceUS, err := utils.NewWorkflow(t, "k3d-test-gslb2", 5054).
 		WithGslb(gslbPath, host).
 		WithTestApp("us").
 		Start()
 	require.NoError(t, err)
-	defer instanceEU.Kill()
+	defer instanceUS.Kill()
 
 	err = instanceEU.WaitForAppIsRunning()
 	require.NoError(t, err)
@@ -57,6 +57,20 @@ func TestWeightsExistsInLocalDNSEndpoint(t *testing.T) {
 
 	require.Equal(t, "roundRobin", epeu.Labels["strategy"])
 	require.Equal(t, "roundRobin", epus.Labels["strategy"])
-	require.True(t, len(epus.Labels) > 1, "EU endpoint", ingressHost, " doesn't contain weight labels")
-	require.True(t, len(epeu.Labels) > 1, "US endpoint", ingressHost, " doesn't contain weight labels")
+
+	require.True(t, StringValueIsInSlice(epeu.Labels["weight-eu-0-50"],[]string{"172.18.0.5","172.18.0.6"}))
+	require.True(t, StringValueIsInSlice(epeu.Labels["weight-eu-1-50"],[]string{"172.18.0.5","172.18.0.6"}))
+	require.True(t, StringValueIsInSlice(epeu.Labels["weight-us-0-50"],[]string{"172.18.0.8","172.18.0.9"}))
+	require.True(t, StringValueIsInSlice(epeu.Labels["weight-us-1-50"],[]string{"172.18.0.8","172.18.0.9"}))
+	require.NotEqual(t, epeu.Labels["weight-eu-0-50"], epeu.Labels["weight-eu-1-50"])
+	require.NotEqual(t, epeu.Labels["weight-us-0-50"], epeu.Labels["weight-us-1-50"])
+}
+
+func StringValueIsInSlice(str string, values []string) bool {
+	for _, v := range values {
+		if str == v {
+			return true
+		}
+	}
+	return false
 }

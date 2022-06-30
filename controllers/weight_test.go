@@ -181,7 +181,7 @@ func TestWeight(t *testing.T) {
 
 			ts := assistant.Targets{}
 			for k, w := range test.data {
-				ts[k] = assistant.Target{IPs: w.targets}
+				ts[k] = &assistant.Target{IPs: w.targets}
 			}
 			m.EXPECT().GetExternalTargets("roundrobin.cloud.example.com").Return(ts).Times(1)
 			m.EXPECT().GetExternalTargets("notfound.cloud.example.com").Return(assistant.Targets{}).Times(1)

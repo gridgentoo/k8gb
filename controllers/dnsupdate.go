@@ -55,6 +55,7 @@ func (r *GslbReconciler) gslbDNSEndpoint(gslb *k8gbv1beta1.Gslb) (*externaldns.D
 
 	for host, health := range serviceHealth {
 		var finalTargets []string
+		var externalTargetsAndRegions = assistant.NewTargets()
 
 		if !strings.Contains(host, r.Config.EdgeDNSZone) {
 			return nil, fmt.Errorf("ingress host %s does not match delegated zone %s", host, r.Config.EdgeDNSZone)
@@ -66,6 +67,7 @@ func (r *GslbReconciler) gslbDNSEndpoint(gslb *k8gbv1beta1.Gslb) (*externaldns.D
 		if isHealthy {
 			finalTargets = append(finalTargets, localTargets...)
 			localTargetsHost := fmt.Sprintf("localtargets-%s", host)
+			externalTargetsAndRegions.Append(r.Config.ClusterGeoTag, localTargets)
 			dnsRecord := &externaldns.Endpoint{
 				DNSName:    localTargetsHost,
 				RecordTTL:  ttl,
@@ -76,7 +78,7 @@ func (r *GslbReconciler) gslbDNSEndpoint(gslb *k8gbv1beta1.Gslb) (*externaldns.D
 		}
 
 		// Check if host is alive on external Gslb
-		externalTargetsAndRegions := r.DNSProvider.GetExternalTargets(host)
+		externalTargetsAndRegions.AppendTargets(r.DNSProvider.GetExternalTargets(host))
 		externalTargets := externalTargetsAndRegions.GetIPs()
 
 		sortTargets(externalTargets)

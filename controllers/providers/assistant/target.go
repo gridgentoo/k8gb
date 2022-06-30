@@ -22,10 +22,10 @@ type Target struct {
 	IPs []string
 }
 
-type Targets map[string]Target
+type Targets map[string]*Target
 
 func NewTargets() Targets {
-	return make(map[string]Target, 0)
+	return make(map[string]*Target, 0)
 }
 
 func (t Targets) GetIPs() (ips []string) {
@@ -35,4 +35,18 @@ func (t Targets) GetIPs() (ips []string) {
 		ips = append(ips, v.IPs...)
 	}
 	return ips
+}
+
+func (t Targets) Append(tag string, ips []string) {
+	if target, found := t[tag]; found {
+		target.IPs = append(target.IPs, ips...)
+		return
+	}
+	t[tag] = &Target{IPs: ips}
+}
+
+func (t Targets) AppendTargets(targets Targets) {
+	for k,v := range targets {
+		t.Append(k, v.IPs)
+	}
 }
