@@ -359,42 +359,6 @@ func TestGslbErrorsIncrement(t *testing.T) {
 	assert.Equal(t, cnt+2, cnt2)
 }
 
-func TestSyncGslbWithIngress(t *testing.T) {
-	settings := provideSettings(t, predefinedConfig)
-	ing := settings.ingress
-	err := settings.client.Get(context.TODO(), settings.request.NamespacedName, ing)
-	aBefore := map[string]string{"field.cattle.io/publicEndpoints": "1.1.1.1"}
-
-	aAfter := map[string]string{"field.cattle.io/publicEndpoints": "1.1.1.1, 2.2.2.2"}
-	ing.SetAnnotations(aBefore)
-
-	// update ingress with annotation
-	t.Logf("-------------- update  ingress with annotation -----------------")
-	settings.client.Update(context.Background(), ing)
-
-	t.Logf("Ingress: %+v\n", ing.ObjectMeta)
-	require.NoError(t, err, "Failed to get expected ingress")
-	//reconcile
-	t.Logf("-------------- reconcile -----------------")
-	reconcileAndUpdateGslb(t, settings)
-	beforeReconcile := settings.gslb
-	// show updated GSLB
-	t.Logf("-------------- updated gslb -----------------")
-	t.Logf("GSLB: %+v", beforeReconcile.ObjectMeta)
-
-	// update ingress annotation
-	ing.SetAnnotations(aAfter)
-	settings.client.Update(context.Background(), ing)
-	t.Logf("-------------- ingress updated annotations -----------------")
-
-	// reconcile
-	reconcileAndUpdateGslb(t, settings)
-	t.Logf("-------------- reconcile -----------------")
-	afterReconcile := settings.gslb
-	// show updated ingress
-	t.Logf("-------------- updated ingress -----------------")
-	t.Logf("GSLB: %+v", afterReconcile.ObjectMeta)
-}
 func TestGslbCreatesDNSEndpointCRForHealthyIngressHosts(t *testing.T) {
 	// arrange
 	serviceName := defaultPodinfoServiceName
