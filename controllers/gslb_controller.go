@@ -237,16 +237,16 @@ func (r *GslbReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			return
 		}
 		gslbExist := &k8gbv1beta1.Gslb{}
-		err = c.Get(context.Background(), client.ObjectKey{
+		gslbExistErr := c.Get(context.Background(), client.ObjectKey{
 			Namespace: a.GetNamespace(),
 			Name:      a.GetName(),
 		}, gslbExist)
-		if err == nil {
-			log.Info().
-				Str("gslb", gslbExist.Name).
-				Msg("Gslb already exists. Skipping Gslb creation...")
-			return
-		}
+//		if err == nil {
+//			log.Info().
+//				Str("gslb", gslbExist.Name).
+//				Msg("Gslb already exists. Skipping Gslb creation...")
+//			return
+//		}
 		gslb := &k8gbv1beta1.Gslb{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace:   a.GetNamespace(),
@@ -307,10 +307,18 @@ func (r *GslbReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		log.Info().
 			Str("gslb", gslb.Name).
 			Msg("Creating new Gslb out of Ingress annotation")
-		err = c.Create(context.Background(), gslb)
-		if err != nil {
-			log.Err(err).Msg("Glsb creation failed")
+		if errors.IsNotFound(gslbExistErr) {
+			err = c.Create(context.Background(), gslb)
+			if err != nil {
+				log.Err(err).Msg("Glsb creation failed")
+			}
+		} else {
+			err = c.Update(context.Background(), gslb)
+			if err != nil {
+				log.Err(err).Msg("Glsb update failed")
+			}
 		}
+
 	}
 
 	ingressMapHandler := handler.EnqueueRequestsFromMapFunc(
