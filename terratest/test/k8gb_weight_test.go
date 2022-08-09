@@ -50,11 +50,11 @@ func TestWeightsExistsInLocalDNSEndpoint(t *testing.T) {
 	err = instanceUS.WaitForAppIsRunning()
 	require.NoError(t, err)
 
-	epLocalEU,err := instanceEU.GetExternalDNSEndpoint().GetEndpointByName(localtargets)
+	epLocalEU, err := instanceEU.GetExternalDNSEndpoint().GetEndpointByName(localtargets)
 	require.NoError(t, err, "missing EU endpoint", localtargets)
-	epLocalUS,err := instanceUS.GetExternalDNSEndpoint().GetEndpointByName(localtargets)
+	epLocalUS, err := instanceUS.GetExternalDNSEndpoint().GetEndpointByName(localtargets)
 	require.NoError(t, err, "missing US endpoint", localtargets)
-	expectedTargets := append(epLocalEU.Targets,epLocalUS.Targets...)
+	expectedTargets := append(epLocalEU.Targets, epLocalUS.Targets...)
 
 	err = instanceEU.WaitForExpected(expectedTargets)
 	require.NoError(t, err)
@@ -73,8 +73,12 @@ func TestWeightsExistsInLocalDNSEndpoint(t *testing.T) {
 		require.NotEqual(t, ep.Labels["weight-eu-0-50"], ep.Labels["weight-eu-1-50"])
 		require.NotEqual(t, ep.Labels["weight-us-0-50"], ep.Labels["weight-us-1-50"])
 		// check all targets are correct
-		for _, v := range epLocalEU.Targets { require.True(t, Contains(v, ep.Targets)) }
-		for _, v := range epLocalUS.Targets { require.True(t, Contains(v, ep.Targets)) }
+		for _, v := range epLocalEU.Targets {
+			require.True(t, Contains(v, ep.Targets))
+		}
+		for _, v := range epLocalUS.Targets {
+			require.True(t, Contains(v, ep.Targets))
+		}
 	}
 }
 
