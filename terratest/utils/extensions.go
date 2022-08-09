@@ -37,6 +37,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v2"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -242,6 +243,16 @@ func (i *Instance) Kill() {
 	if i.w.state.namespaceCreated {
 		k8s.DeleteNamespace(i.w.t, i.w.k8sOptions, i.w.namespace)
 	}
+}
+
+func (i *Instance) Reapply(path string) {
+	i.w.t.Logf("reapplying %s", path)
+	i.w.settings.gslbResourcePath = path
+	k8s.KubectlApply(i.w.t, i.w.k8sOptions, i.w.settings.gslbResourcePath)
+	k8s.WaitUntilIngressAvailable(i.w.t, i.w.k8sOptions, i.w.state.gslb.name, 60, 1*time.Second)
+	ingress := k8s.GetIngress(i.w.t, i.w.k8sOptions, i.w.state.gslb.name)
+	require.Equal(i.w.t, ingress.Name, i.w.state.gslb.name)
+	i.w.settings.ingressName = i.w.state.gslb.name
 }
 
 // GetCoreDNSIP gets core DNS IP address
@@ -458,4 +469,25 @@ func waitForLocalGSLBNew(t *testing.T, host string, port int, expectedResult []s
 		time.Second*1,
 		func() ([]string, error) { return dns.Dig("localhost:"+strconv.Itoa(port), host, isUdp) },
 		expectedResult)
+}
+
+func (i *Instance) Resources() (o *Resources) {
+	return &Resources{
+		i,
+	}
+}
+
+type Resources struct {
+	i *Instance
+}
+
+// GslbSpecProperty returns actual value of one Spec property, e.g: `spec.ingress.rules[0].host`
+func (r *Resources) GslbSpecProperty(specPath string) string {
+	actualValue, _ := k8s.RunKubectlAndGetOutputE(r.i.w.t, r.i.w.k8sOptions, "get", "gslb", r.i.w.state.gslb.name,
+		"-o", fmt.Sprintf("custom-columns=SERVICESTATUS:%s", specPath), "--no-headers")
+	return actualValue
+}
+
+func (r *Resources) Ingress() *networkingv1.Ingress {
+	return k8s.GetIngress(r.i.w.t, r.i.w.k8sOptions, r.i.w.settings.ingressName)
 }

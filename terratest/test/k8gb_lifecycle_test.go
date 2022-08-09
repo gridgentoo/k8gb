@@ -96,22 +96,50 @@ func TestK8gbRepeatedlyRecreatedFromIngress(t *testing.T) {
 	assertStrategy(t, options)
 }
 
-// TestK8gbSpecKeepsStableAfterIngressUpdates, If ingress is updated and GSLB has non default values, the GSLB stays
+func TestK8gbSpecKeepsSyncedAfterIngressUpdates2(t *testing.T) {
+	t.Parallel()
+	const name = "test-gslb-lifecycle"
+	const host1 = "terratest-failover.cloud.example.com"
+	const gslbPath = "../examples/failover-lifecycle.yaml"
+	const ingressPath = "../examples/ingress-annotation-gslb-lifecycle.yaml"
+
+	instance, _ := utils.NewWorkflow(t, "k3d-test-gslb2", 5054).
+		WithGslb(gslbPath, "-").
+		Start()
+	defer instance.Kill()
+	instance.WaitForGSLB()
+
+	t.Run("GSLB created by ingress is synced", func(t *testing.T) {
+		ingHost := instance.Resources().Ingress().Spec.Rules[0].Host
+		gslbHost := instance.Resources().GslbSpecProperty("spec.ingress.rules[0].host")
+		require.Equal(t, "lifecycle.cloud.example.com", ingHost)
+		require.Equal(t, "lifecycle.cloud.example.com", gslbHost)
+	})
+
+	t.Run("reapply ingress from different source", func(t *testing.T) {
+		instance.Reapply(ingressPath)
+		// todo: reapply
+	})
+
+	// utils.AssertGslbSpec(t, options, name, "spec.ingress.rules[0].host", "lifecycle.cloud.example.com")
+}
+
+// TestK8gbSpecKeepsSyncedAfterIngressUpdates, If ingress is updated and GSLB has non default values, the GSLB stays
 // stable and is not updated.
-func TestK8gbSpecKeepsStableAfterIngressUpdates(t *testing.T) {
+func TestK8gbSpecKeepsSyncedAfterIngressUpdates(t *testing.T) {
 	t.Parallel()
 	// name of ingress and gslb
 	const name = "test-gslb-lifecycle"
 
-	assertStrategy := func(t *testing.T, options *k8s.KubectlOptions) {
-		utils.AssertGslbSpec(t, options, name, "spec.strategy.splitBrainThresholdSeconds", "600")
-		utils.AssertGslbSpec(t, options, name, "spec.strategy.dnsTtlSeconds", "5")
-		utils.AssertGslbSpec(t, options, name, "spec.strategy.primaryGeoTag", settings.PrimaryGeoTag)
-		utils.AssertGslbSpec(t, options, name, "spec.strategy.type", "failover")
-	}
+	//assertStrategy := func(t *testing.T, options *k8s.KubectlOptions) {
+	//	utils.AssertGslbSpec(t, options, name, "spec.strategy.splitBrainThresholdSeconds", "600")
+	//	utils.AssertGslbSpec(t, options, name, "spec.strategy.dnsTtlSeconds", "5")
+	//	utils.AssertGslbSpec(t, options, name, "spec.strategy.primaryGeoTag", settings.PrimaryGeoTag)
+	//	utils.AssertGslbSpec(t, options, name, "spec.strategy.type", "failover")
+	//}
 
-	kubeResourcePath, err := filepath.Abs("../examples/failover-lifecycle.yaml")
-	ingressResourcePath, err := filepath.Abs("../examples/ingress-annotation-failover.yaml")
+	gslbFailoverPath, err := filepath.Abs("../examples/failover-lifecycle.yaml")
+	ingressResourcePath, err := filepath.Abs("../examples/ingress-annotation-gslb-lifecycle.yaml")
 	require.NoError(t, err)
 	// To ensure we can reuse the resource config on the same cluster to test different scenarios, we setup a unique
 	// namespace for the resources for this test.
@@ -128,19 +156,21 @@ func TestK8gbSpecKeepsStableAfterIngressUpdates(t *testing.T) {
 	defer k8s.DeleteNamespace(t, options, namespaceName)
 
 	// create gslb
-	utils.CreateGslb(t, options, settings, kubeResourcePath)
+	utils.CreateGslb(t, options, settings, gslbFailoverPath)
 	k8s.WaitUntilIngressAvailable(t, options, name, 60, 1*time.Second)
-
-	assertStrategy(t, options)
-
-	// reapply ingress
-	utils.CreateGslb(t, options, settings, ingressResourcePath)
-
-	k8s.WaitUntilIngressAvailable(t, options, name, 60, 1*time.Second)
-
+	//assertStrategy(t, options)
 	ingress := k8s.GetIngress(t, options, name)
+	require.Equal(t, "lifecycle.cloud.example.com", ingress.Spec.Rules[0].Host)
+	utils.AssertGslbSpec(t, options, name, "spec.ingress.rules[0].host", "lifecycle.cloud.example.com")
 
+	// reapply ingress with different host
+	utils.CreateGslb(t, options, settings, ingressResourcePath)
+	k8s.WaitUntilIngressAvailable(t, options, name, 60, 1*time.Second)
+
+	ingress = k8s.GetIngress(t, options, name)
+	require.Equal(t, "ingress-failover-simple.cloud.example.com", ingress.Spec.Rules[0].Host)
+	utils.AssertGslbSpec(t, options, name, "spec.ingress.rules[0].host", "ingress-failover-simple.cloud.example.com")
 	require.Equal(t, ingress.Name, name)
 	// assert Gslb strategy has initial values, ingress doesn't change it
-	assertStrategy(t, options)
+	//assertStrategy(t, options)
 }
