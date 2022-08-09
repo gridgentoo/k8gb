@@ -127,6 +127,8 @@ func (w *Workflow) WithIngress(path string) *Workflow {
 	return w
 }
 
+// WithGslb
+// TODO: consider taking host dynamically
 func (w *Workflow) WithGslb(path, host string) *Workflow {
 	var err error
 	if host == "" {
@@ -245,10 +247,15 @@ func (i *Instance) Kill() {
 	}
 }
 
-func (i *Instance) Reapply(path string) {
+func (i *Instance) ReapplyIngress(path string) {
+	var err error
 	i.w.t.Logf("reapplying %s", path)
-	i.w.settings.gslbResourcePath = path
-	k8s.KubectlApply(i.w.t, i.w.k8sOptions, i.w.settings.gslbResourcePath)
+	i.w.settings.ingressResourcePath = path
+	i.w.settings.gslbResourcePath = ""
+	i.w.state.gslb.name, err = i.w.getManifestName(i.w.settings.ingressResourcePath)
+	require.NoError(i.w.t, err)
+	k8s.KubectlApply(i.w.t, i.w.k8sOptions, i.w.settings.ingressResourcePath)
+	// modifying inner state.gslb.name and ingress.Name has nothing to do with reading these values dynamically afterwards.
 	k8s.WaitUntilIngressAvailable(i.w.t, i.w.k8sOptions, i.w.state.gslb.name, 60, 1*time.Second)
 	ingress := k8s.GetIngress(i.w.t, i.w.k8sOptions, i.w.state.gslb.name)
 	require.Equal(i.w.t, ingress.Name, i.w.state.gslb.name)
