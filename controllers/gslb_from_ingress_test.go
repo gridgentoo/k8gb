@@ -95,3 +95,20 @@ func TestChangeIngressHostName(t *testing.T) {
 	require.Equal(t, 3, len(settings.gslb.Spec.Ingress.Rules))
 	require.Equal(t, 3, len(settings.ingress.Spec.Rules))
 }
+
+func TestDefaultSettingsOverride(t *testing.T) {
+	settings := provideSettings(t, predefinedConfig)
+	settings.ingress.Annotations[dnsTTLSecondsAnnotation] = "5"
+	settings.ingress.Annotations[splitBrainThresholdSecondsAnnotation] = "600"
+	_ = settings.client.Update(context.TODO(), settings.ingress)
+	settings.reconciler.createGSLBFromIngress(settings.client,
+		strategyAnnotation,
+		depresolver.RoundRobinStrategy,
+		settings.ingress,
+		depresolver.RoundRobinStrategy)
+
+	reconcileAndUpdateGslb(t, settings)
+
+	require.Equal(t, settings.gslb.Spec.Strategy.DNSTtlSeconds, 5)
+	require.Equal(t, settings.gslb.Spec.Strategy.SplitBrainThresholdSeconds, 600)
+}
